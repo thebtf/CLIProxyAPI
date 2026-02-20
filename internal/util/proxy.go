@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v6/sdk/config"
 	log "github.com/sirupsen/logrus"
@@ -31,7 +32,11 @@ func SetProxy(cfg *config.SDKConfig, httpClient *http.Client) *http.Client {
 				password, _ := proxyURL.User.Password()
 				proxyAuth = &proxy.Auth{User: username, Password: password}
 			}
-			dialer, errSOCKS5 := proxy.SOCKS5("tcp", proxyURL.Host, proxyAuth, proxy.Direct)
+			netDialer := &net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}
+			dialer, errSOCKS5 := proxy.SOCKS5("tcp", proxyURL.Host, proxyAuth, netDialer)
 			if errSOCKS5 != nil {
 				log.Errorf("create SOCKS5 dialer failed: %v", errSOCKS5)
 				return httpClient
@@ -41,10 +46,20 @@ func SetProxy(cfg *config.SDKConfig, httpClient *http.Client) *http.Client {
 				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 					return dialer.Dial(network, addr)
 				},
+				TLSHandshakeTimeout:   10 * time.Second,
+				ResponseHeaderTimeout: 30 * time.Second,
 			}
 		} else if proxyURL.Scheme == "http" || proxyURL.Scheme == "https" {
 			// Configure HTTP or HTTPS proxy.
-			transport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
+			transport = &http.Transport{
+				Proxy: http.ProxyURL(proxyURL),
+				DialContext: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ResponseHeaderTimeout: 30 * time.Second,
+			}
 		}
 	}
 	// If a new transport was created, apply it to the HTTP client.
