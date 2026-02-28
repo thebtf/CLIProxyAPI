@@ -382,6 +382,7 @@ func (h *Handler) buildAuthFileEntry(auth *coreauth.Auth) gin.H {
 		"name":           name,
 		"type":           strings.TrimSpace(auth.Provider),
 		"provider":       strings.TrimSpace(auth.Provider),
+		"prefix":         auth.Prefix,
 		"label":          auth.Label,
 		"status":         auth.Status,
 		"status_message": auth.StatusMessage,
@@ -865,6 +866,15 @@ func (h *Handler) PatchAuthFileFields(c *gin.Context) {
 	changed := false
 	if req.Prefix != nil {
 		targetAuth.Prefix = *req.Prefix
+		if targetAuth.Metadata == nil {
+			targetAuth.Metadata = make(map[string]any)
+		}
+		trimmed := strings.TrimSpace(*req.Prefix)
+		if trimmed == "" {
+			delete(targetAuth.Metadata, "prefix")
+		} else {
+			targetAuth.Metadata["prefix"] = trimmed
+		}
 		changed = true
 	}
 	if req.ProxyURL != nil {
@@ -1714,9 +1724,10 @@ func (h *Handler) RequestQwenToken(c *gin.Context) {
 		record := &coreauth.Auth{
 			ID:       fmt.Sprintf("qwen-%s.json", tokenStorage.Email),
 			Provider: "qwen",
+			Prefix:   "qwenai",
 			FileName: fmt.Sprintf("qwen-%s.json", tokenStorage.Email),
 			Storage:  tokenStorage,
-			Metadata: map[string]any{"email": tokenStorage.Email},
+			Metadata: map[string]any{"email": tokenStorage.Email, "prefix": "qwenai"},
 		}
 		savedPath, errSave := h.saveTokenRecord(ctx, record)
 		if errSave != nil {

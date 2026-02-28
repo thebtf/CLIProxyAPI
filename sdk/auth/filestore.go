@@ -259,6 +259,9 @@ func (s *FileTokenStore) readAuthFile(path, baseDir string) (*cliproxyauth.Auth,
 		LastRefreshedAt:  time.Time{},
 		NextRefreshAfter: nextRefreshAfter,
 	}
+	if prefix, ok := metadata["prefix"].(string); ok && strings.TrimSpace(prefix) != "" {
+		auth.Prefix = strings.TrimSpace(prefix)
+	}
 	if email, ok := metadata["email"].(string); ok && email != "" {
 		auth.Attributes["email"] = email
 	}
