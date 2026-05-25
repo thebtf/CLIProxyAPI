@@ -67,4 +67,37 @@ type StreamingConfig struct {
 	// to allow auth rotation / transient recovery.
 	// <= 0 disables bootstrap retries. Default is 0.
 	BootstrapRetries int `yaml:"bootstrap-retries,omitempty" json:"bootstrap-retries,omitempty"`
+
+	// UpstreamH2PingIntervalSeconds tunes the HTTP/2 PING-based liveness
+	// detection applied to upstream connections used by executors. The h2
+	// transport sends a PING frame after this many seconds of read-idle on
+	// each connection; if the peer fails to ACK within
+	// UpstreamH2PingTimeoutSeconds the connection is closed and the in-flight
+	// request fails fast instead of hanging.
+	//
+	// This addresses upstream providers (notably ChatGPT/Codex OAuth on large
+	// reasoning requests) that may stop emitting bytes mid-stream or before
+	// the first response event without closing the TCP connection. See
+	// router-for-me/CLIProxyAPI#3536.
+	//
+	//   - 0 (unset) -> apply package default (15 seconds)
+	//   - >0        -> use as seconds
+	//
+	// To disable liveness entirely, set UpstreamH2LivenessDisabled = true.
+	UpstreamH2PingIntervalSeconds int `yaml:"upstream-h2-ping-interval-seconds,omitempty" json:"upstream-h2-ping-interval-seconds,omitempty"`
+
+	// UpstreamH2PingTimeoutSeconds bounds how long the h2 transport waits for
+	// a PING ACK before declaring the connection dead.
+	//
+	//   - 0 (unset) -> apply package default (15 seconds)
+	//   - >0        -> use as seconds
+	UpstreamH2PingTimeoutSeconds int `yaml:"upstream-h2-ping-timeout-seconds,omitempty" json:"upstream-h2-ping-timeout-seconds,omitempty"`
+
+	// UpstreamH2LivenessDisabled turns off HTTP/2 PING-based liveness
+	// detection entirely. When true, upstream connections fall back to the
+	// legacy behaviour of waiting indefinitely on a silent peer. Most
+	// operators should leave this false; the escape hatch exists for
+	// environments where h2 PING is undesirable (constrained proxies, custom
+	// load balancers that mishandle PING frames, etc.).
+	UpstreamH2LivenessDisabled bool `yaml:"upstream-h2-liveness-disabled,omitempty" json:"upstream-h2-liveness-disabled,omitempty"`
 }
