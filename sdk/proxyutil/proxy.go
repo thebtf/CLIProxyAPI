@@ -71,11 +71,21 @@ func Parse(raw string) (Setting, error) {
 	}
 }
 
-func cloneDefaultTransport() *http.Transport {
+// CloneDefaultTransport returns a fresh *http.Transport cloned from
+// http.DefaultTransport. The clone is safe to mutate without affecting the
+// global default. Falls back to an empty transport if the default is not a
+// *http.Transport (extremely uncommon).
+func CloneDefaultTransport() *http.Transport {
 	if transport, ok := http.DefaultTransport.(*http.Transport); ok && transport != nil {
 		return transport.Clone()
 	}
 	return &http.Transport{}
+}
+
+// cloneDefaultTransport remains as an internal alias to keep existing callers
+// in this file readable. Prefer CloneDefaultTransport from outside the package.
+func cloneDefaultTransport() *http.Transport {
+	return CloneDefaultTransport()
 }
 
 // NewDirectTransport returns a transport that bypasses environment proxies.
