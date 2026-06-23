@@ -2,11 +2,27 @@
 
 # Project Rules
 
+## DEPLOYMENT STATUS — fork retired as build source (2026-06-24)
+
+**Read this first. The fork no longer builds the deployed image.** Decision 2026-06-24, after a behaviour-vs-usage audit of all 4 functional patches:
+
+- All 4 functional patches are **structural no-ops on our actual traffic** (we serve `claude-*` + `codex` only). User confirmed: **no** Gemini CLI client (#1958 dead), **no** global proxy configured — per-account only (#1960 dead, nothing to bypass), **no** prefix-routing / single auth per provider (#2669 dead, `Auth.Prefix` always empty). Each patch's code path is never entered.
+- Upstream publishes an official multi-arch image: **`eceasy/cli-proxy-api:latest`** (Docker Hub, amd64+arm64, refreshes `models.json` every build, on each `v*` tag). It is **strictly better** than our GHCR image (which was amd64-only + frozen models.json), same Dockerfile/binary.
+- **Action taken:** Unraid template repointed `ghcr.io/thebtf/cliproxyapi:latest` → `eceasy/cli-proxy-api:latest`. Watchtower now tracks the official image. **Our GHCR build is frozen** (kept as rollback for a few weeks, then deletable).
+
+**What this means for future sessions:**
+- **No more sync rounds.** Do NOT run the Routine Sync Procedure below by reflex. There is nothing to rebase/build/deploy — the deployed image is upstream's official one. "Check for updates" now means: glance at the upstream release, done.
+- The fork repo lives on ONLY as (a) host for the 3 open upstream PR branches (#1958/#1960/#2669 — useful to the community even though we don't need them), (b) these `CLAUDE.md` notes.
+- The 3 PR branches are independent of `main`; leave them. Do NOT re-open or re-add patches.
+- If a real need returns (e.g. you start using Qwen prefix-routing, or add a LAN model behind a proxied account), the patch code is preserved in backup branches + the PR branches; `git cherry-pick` revives it. Until then, the fork is dormant by design (fork-lifecycle principle below: a fork kept alive only for itself is the anti-pattern).
+
+The sections below (Routine Sync Procedure, patch list, sync hygiene) are **retained for history / revival**, not as a live workflow. They apply only if the fork is reactivated as a build source.
+
 ## Upstream
 
 Single upstream — `router-for-me/CLIProxyAPI` (this repo's `upstream` remote). All upstream PRs route here.
 
-**Fork lifecycle principle.** This fork exists *only* while our patches are still needed. Each patch is a liability that must be re-justified every sync: if upstream lands an equivalent fix, drop our patch (see `c57203ea` → upstream `e7f4dd47`, 2026-06-09). Keep the patch set minimal — never add a fork-only change to an upstream-tracked file when a fork-only file (e.g. `CLAUDE.md`) can hold it. If all functional patches become superseded upstream, the fork has served its purpose and should be retired, not kept alive for its own sake.
+**Fork lifecycle principle.** This fork exists *only* while our patches are still needed. Each patch is a liability that must be re-justified every sync: if upstream lands an equivalent fix, drop our patch (see `c57203ea` → upstream `e7f4dd47`, 2026-06-09). Keep the patch set minimal — never add a fork-only change to an upstream-tracked file when a fork-only file (e.g. `CLAUDE.md`) can hold it. If all functional patches become superseded upstream, the fork has served its purpose and should be retired, not kept alive for its own sake. **(2026-06-24: this condition is now met by a different route — the patches are not superseded upstream, they are unnecessary for our usage. Same outcome: fork retired as build source.)**
 
 **Current functional patches (4)** — re-audit relevance every sync:
 1. `fix: strip -customtools variant suffix` — `internal/registry/model_variants.go` (fork-only file), `model_registry.go`, `sdk/api/handlers/handlers.go`. PR #1958.
